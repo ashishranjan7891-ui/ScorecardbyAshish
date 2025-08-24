@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cricket Scoreboard by Ashish</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cricket Scoreboard by Ashish — Overs Grouped</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
   body { background: #f7f7f7; color: #333; padding: 10px; }
@@ -17,9 +17,21 @@
   .score { font-size: 18px; font-weight: bold; margin: 5px 0; }
   .reset-btn { background: #dc3545; }
   .reset-btn:hover { background: #a71d2a; }
-  .ball-log { margin-top: 8px; font-size: 12px; background: #f0f0f0; padding: 6px; border-radius: 6px; max-height: 80px; overflow-y: auto; }
-  .ball-log span { margin: 2px; padding: 4px 6px; background: #ddd; border-radius: 4px; display: inline-block; font-size: 12px; }
-  .run-buttons, .special-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; margin-bottom: 10px; }
+
+  /* Ball chips */
+  .over-block { background: #f0f3f9; padding: 8px; border-radius: 8px; margin-top: 6px; }
+  .over-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .over-label { font-weight: bold; margin-right: 6px; }
+  .chip { margin: 2px; padding: 4px 8px; border-radius: 9999px; display: inline-block; font-size: 12px; line-height: 1; border: 1px solid rgba(0,0,0,0.06); }
+  .chip.run { background: #e0e7ff; color: #1e3a8a; }
+  .chip.wicket { background: #fee2e2; color: #b91c1c; border-color: rgba(185,28,28,0.2); }
+  .chip.wide { background: #ffedd5; color: #c2410c; border-color: rgba(194,65,12,0.2); }
+  .chip.noball { background: #f3e8ff; color: #7e22ce; border-color: rgba(126,34,206,0.2); }
+
+  .teams { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 800px) {
+    .teams { grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -87,7 +99,7 @@ let teams = {
 
 function addBallDirect(runs) {
   const teamId = document.getElementById("scoreTeam").value;
-  let display = runs;
+  let display = String(runs);
   teams[teamId].runs += runs;
 
   teams[teamId].ballCount++;
@@ -96,37 +108,26 @@ function addBallDirect(runs) {
     teams[teamId].ballCount = 0;
   }
 
-  teams[teamId].balls.push({ ball: display, runs, legal: true });
+  teams[teamId].balls.push({ type: 'run', ball: display, runs, legal: true });
   updateScoreboard();
 }
 
 function addSpecial(type, extraRuns = 0) {
   const teamId = document.getElementById("scoreTeam").value;
-  let runs = 0, isLegal = true, display = type;
+  let runs = 0, isLegal = true, display = type, chipClass = '';
 
   if (type === "W") {
     teams[teamId].wickets++;
     display = "W";
+    chipClass = 'wicket';
   } else if (type === "wide") {
-    runs = 1;
-    teams[teamId].runs += runs;
-    isLegal = false;
-    display = "Wide";
+    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "Wide"; chipClass = 'wide';
   } else if (type === "noball") {
-    runs = 1;
-    teams[teamId].runs += runs;
-    isLegal = false;
-    display = "NoBall";
+    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "NoBall"; chipClass = 'noball';
   } else if (type === "wide+") {
-    runs = 1 + extraRuns;
-    teams[teamId].runs += runs;
-    isLegal = false;
-    display = `W+${extraRuns}`;
+    runs = 1 + extraRuns; teams[teamId].runs += runs; isLegal = false; display = `Wide+${extraRuns}`; chipClass = 'wide';
   } else if (type === "noball+") {
-    runs = 1 + extraRuns;
-    teams[teamId].runs += runs;
-    isLegal = false;
-    display = `NB+${extraRuns}`;
+    runs = 1 + extraRuns; teams[teamId].runs += runs; isLegal = false; display = `NB+${extraRuns}`; chipClass = 'noball';
   }
 
   if (isLegal && type !== "W") {
@@ -137,7 +138,8 @@ function addSpecial(type, extraRuns = 0) {
     }
   }
 
-  teams[teamId].balls.push({ ball: display, runs, legal: isLegal });
+  const finalType = chipClass || 'run';
+  teams[teamId].balls.push({ type: finalType, ball: display, runs, legal: isLegal });
   updateScoreboard();
 }
 
@@ -170,13 +172,51 @@ function resetMatch() {
   updateScoreboard();
 }
 
+// Group events into rows per over (legal deliveries only advance the over)
+function groupByOver(balls) {
+  const overs = [];
+  let current = [];
+  let legalCount = 0;
+
+  for (const b of balls) {
+    current.push(b);
+    if (b.legal) {
+      legalCount++;
+      if (legalCount === 6) {
+        overs.push(current);
+        current = [];
+        legalCount = 0;
+      }
+    }
+  }
+  if (current.length) overs.push(current);
+  return overs;
+}
+
+function renderTeamBlock(teamId) {
+  const t = teams[teamId];
+  const oversGrouped = groupByOver(t.balls);
+
+  let html = `
+    <div class="team">
+      <div class="score"><strong>Team ${teamId}:</strong> ${t.runs}/${t.wickets} (${t.overs}.${t.ballCount} ov)</div>
+      <div class="over-block">
+        ${oversGrouped.map((overBalls, idx) => {
+          const overNum = idx + 1;
+          const chips = overBalls.map(b => `<span class="chip ${b.type}">${b.ball}</span>`).join(' ');
+          return `<div class="over-row"><span class="over-label">Over ${overNum}:</span> ${chips}</div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  return html;
+}
+
 function updateScoreboard() {
   const display = `
-    <div><strong>Team 1:</strong> ${teams[1].runs}/${teams[1].wickets} (${teams[1].overs}.${teams[1].ballCount} ov)</div>
-    <div class="ball-log">${teams[1].balls.map(b=>`<span>${b.ball}</span>`).join(" ")}</div>
-
-    <div><strong>Team 2:</strong> ${teams[2].runs}/${teams[2].wickets} (${teams[2].overs}.${teams[2].ballCount} ov)</div>
-    <div class="ball-log">${teams[2].balls.map(b=>`<span>${b.ball}</span>`).join(" ")}</div>
+    <div class="teams">
+      ${renderTeamBlock(1)}
+      ${renderTeamBlock(2)}
+    </div>
   `;
   document.getElementById("scoreboardDisplay").innerHTML = display;
 }
