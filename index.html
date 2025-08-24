@@ -221,6 +221,12 @@ function updateScoreboard() {
   document.getElementById("scoreboardDisplay").innerHTML = display;
 }
 
+// Warn before refresh/close
+window.addEventListener("beforeunload", function (e) {
+  e.preventDefault();
+  e.returnValue = "Are you sure you want to leave? This will reset the scoreboard.";
+});
+
 updateScoreboard();
 </script>
 </body>
