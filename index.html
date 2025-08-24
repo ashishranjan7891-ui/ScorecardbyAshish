@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cricket Scoreboard by Ashish</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+  body { background: #f7f7f7; color: #333; padding: 10px; }
+  .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  h1, h2 { text-align: center; margin-bottom: 10px; font-size: 20px; }
+  .flex { display: flex; flex-direction: column; gap: 15px; }
+  .score-controls, .scoreboard { background: #fafafa; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  label { font-weight: bold; display: block; margin: 6px 0 5px; font-size: 14px; }
+  button { background: #007bff; color: white; cursor: pointer; transition: 0.3s; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; padding: 8px; }
+  button:hover { background: #0056b3; }
+  .score { font-size: 18px; font-weight: bold; margin: 5px 0; }
+  .reset-btn { background: #dc3545; }
+  .reset-btn:hover { background: #a71d2a; }
+  .ball-log { margin-top: 8px; font-size: 12px; background: #f0f0f0; padding: 6px; border-radius: 6px; max-height: 80px; overflow-y: auto; }
+  .ball-log span { margin: 2px; padding: 4px 6px; background: #ddd; border-radius: 4px; display: inline-block; font-size: 12px; }
+  .run-buttons, .special-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Cricket Scoreboard by Ashish</h1>
+<div class="flex">
+
+  <div class="score-controls">
+    <h2>Update</h2>
+
+    <label>Team</label>
+    <select id="scoreTeam" style="width:100%; padding:6px; font-size:14px; border-radius:6px;">
+      <option value="1">Team 1</option>
+      <option value="2">Team 2</option>
+    </select>
+
+    <label>Runs</label>
+    <div class="run-buttons">
+      <button onclick="addBallDirect(0)">0</button>
+      <button onclick="addBallDirect(1)">1</button>
+      <button onclick="addBallDirect(2)">2</button>
+      <button onclick="addBallDirect(3)">3</button>
+      <button onclick="addBallDirect(4)">4</button>
+      <button onclick="addBallDirect(5)">5</button>
+      <button onclick="addBallDirect(6)">6</button>
+    </div>
+
+    <label>Special</label>
+    <div class="special-buttons">
+      <button onclick="addSpecial('W')">Wicket</button>
+      <button onclick="addSpecial('wide')">Wide</button>
+      <button onclick="addSpecial('noball')">NoBall</button>
+      <button onclick="addSpecial('wide+',1)">W+1</button>
+      <button onclick="addSpecial('wide+',2)">W+2</button>
+      <button onclick="addSpecial('wide+',3)">W+3</button>
+      <button onclick="addSpecial('wide+',4)">W+4</button>
+      <button onclick="addSpecial('wide+',5)">W+5</button>
+      <button onclick="addSpecial('wide+',6)">W+6</button>
+      <button onclick="addSpecial('noball+',1)">NB+1</button>
+      <button onclick="addSpecial('noball+',2)">NB+2</button>
+      <button onclick="addSpecial('noball+',3)">NB+3</button>
+      <button onclick="addSpecial('noball+',4)">NB+4</button>
+      <button onclick="addSpecial('noball+',5)">NB+5</button>
+      <button onclick="addSpecial('noball+',6)">NB+6</button>
+    </div>
+
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button style="flex:1" onclick="undoBall()">Undo</button>
+      <button style="flex:1" class="reset-btn" onclick="resetMatch()">Reset</button>
+    </div>
+  </div>
+
+  <div class="scoreboard">
+    <h2>Score</h2>
+    <div id="scoreboardDisplay"></div>
+  </div>
+</div>
+</div>
+
+<script>
+let teams = {
+  1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
+  2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
+};
+
+function addBallDirect(runs) {
+  const teamId = document.getElementById("scoreTeam").value;
+  let display = runs;
+  teams[teamId].runs += runs;
+
+  teams[teamId].ballCount++;
+  if (teams[teamId].ballCount === 6) {
+    teams[teamId].overs++;
+    teams[teamId].ballCount = 0;
+  }
+
+  teams[teamId].balls.push({ ball: display, runs, legal: true });
+  updateScoreboard();
+}
+
+function addSpecial(type, extraRuns = 0) {
+  const teamId = document.getElementById("scoreTeam").value;
+  let runs = 0, isLegal = true, display = type;
+
+  if (type === "W") {
+    teams[teamId].wickets++;
+    display = "W";
+  } else if (type === "wide") {
+    runs = 1;
+    teams[teamId].runs += runs;
+    isLegal = false;
+    display = "Wide";
+  } else if (type === "noball") {
+    runs = 1;
+    teams[teamId].runs += runs;
+    isLegal = false;
+    display = "NoBall";
+  } else if (type === "wide+") {
+    runs = 1 + extraRuns;
+    teams[teamId].runs += runs;
+    isLegal = false;
+    display = `W+${extraRuns}`;
+  } else if (type === "noball+") {
+    runs = 1 + extraRuns;
+    teams[teamId].runs += runs;
+    isLegal = false;
+    display = `NB+${extraRuns}`;
+  }
+
+  if (isLegal && type !== "W") {
+    teams[teamId].ballCount++;
+    if (teams[teamId].ballCount === 6) {
+      teams[teamId].overs++;
+      teams[teamId].ballCount = 0;
+    }
+  }
+
+  teams[teamId].balls.push({ ball: display, runs, legal: isLegal });
+  updateScoreboard();
+}
+
+function undoBall() {
+  const teamId = document.getElementById("scoreTeam").value;
+  const last = teams[teamId].balls.pop();
+  if (!last) return;
+
+  teams[teamId].runs -= last.runs;
+  if (last.ball === "W") {
+    teams[teamId].wickets--;
+  }
+
+  if (last.legal) {
+    if (teams[teamId].ballCount === 0 && teams[teamId].overs > 0) {
+      teams[teamId].overs--;
+      teams[teamId].ballCount = 5;
+    } else {
+      teams[teamId].ballCount--;
+    }
+  }
+  updateScoreboard();
+}
+
+function resetMatch() {
+  teams = {
+    1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
+    2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
+  };
+  updateScoreboard();
+}
+
+function updateScoreboard() {
+  const display = `
+    <div><strong>Team 1:</strong> ${teams[1].runs}/${teams[1].wickets} (${teams[1].overs}.${teams[1].ballCount} ov)</div>
+    <div class="ball-log">${teams[1].balls.map(b=>`<span>${b.ball}</span>`).join(" ")}</div>
+
+    <div><strong>Team 2:</strong> ${teams[2].runs}/${teams[2].wickets} (${teams[2].overs}.${teams[2].ballCount} ov)</div>
+    <div class="ball-log">${teams[2].balls.map(b=>`<span>${b.ball}</span>`).join(" ")}</div>
+  `;
+  document.getElementById("scoreboardDisplay").innerHTML = display;
+}
+
+updateScoreboard();
+</script>
+</body>
+</html>
