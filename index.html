@@ -130,7 +130,7 @@ function addSpecial(type, extraRuns = 0) {
     runs = 1 + extraRuns; teams[teamId].runs += runs; isLegal = false; display = `NB+${extraRuns}`; chipClass = 'noball';
   }
 
-  if (isLegal && type !== "W") {
+  if (isLegal) {
     teams[teamId].ballCount++;
     if (teams[teamId].ballCount === 6) {
       teams[teamId].overs++;
