@@ -10,17 +10,21 @@
   .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
   h1, h2 { text-align: center; margin-bottom: 10px; font-size: 22px; }
   .flex { display: flex; flex-direction: column; gap: 15px; }
-  .score-controls, .scoreboard { background: #fafafa; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  .score-controls { background: #fafafa; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
   label { font-weight: bold; display: block; margin: 8px 0 6px; font-size: 16px; }
   button, select { background: #007bff; color: white; cursor: pointer; transition: 0.3s; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; padding: 10px; }
   button:hover { background: #0056b3; }
   select { width: 100%; color: #333; background: #fff; }
-  .score { font-size: 20px; font-weight: bold; margin: 10px 0; }
   .reset-btn { background: #dc3545; }
   .reset-btn:hover { background: #a71d2a; }
 
+  /* Scoreboard top section */
+  .scoreboard { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f0f8ff; border-radius: 8px; margin-bottom: 10px; }
+  .current-score { font-size: 32px; font-weight: bold; text-align: center; flex: 1; }
+  .other-score { font-size: 16px; opacity: 0.7; white-space: nowrap; }
+
   /* Ball chips */
-  .over-block { background: #f0f3f9; padding: 8px; border-radius: 8px; margin-top: 6px; }
+  .over-block { background: #f0f3f9; padding: 8px; border-radius: 8px; margin-top: 10px; }
   .over-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
   .over-label { font-weight: bold; margin-right: 6px; }
   .chip { margin: 2px; padding: 6px 10px; border-radius: 9999px; display: inline-block; font-size: 14px; line-height: 1; border: 1px solid rgba(0,0,0,0.06); }
@@ -28,25 +32,16 @@
   .chip.wicket { background: #fee2e2; color: #b91c1c; border-color: rgba(185,28,28,0.2); }
   .chip.wide { background: #ffedd5; color: #c2410c; border-color: rgba(194,65,12,0.2); }
   .chip.noball { background: #f3e8ff; color: #7e22ce; border-color: rgba(126,34,206,0.2); }
-
-  /* Scoreboard layout */
-  .teams { display: grid; grid-template-columns: 1fr; gap: 12px; }
-  .team { padding: 10px; border-radius: 10px; transition: 0.3s; }
-  .team.current { background: #e6f7ff; transform: scale(1.05); }
-  .team.other { background: #f9f9f9; opacity: 0.85; font-size: 14px; }
-  @media (min-width: 800px) {
-    .teams { grid-template-columns: 1fr 1fr; }
-  }
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Cricket Scoreboard by Ashish</h1>
 
-<!-- Scoreboard moved to top -->
+<!-- Scoreboard Top -->
 <div class="scoreboard">
-  <h2>Scoreboard</h2>
-  <div id="scoreboardDisplay"></div>
+  <div class="current-score" id="currentTeamScore"></div>
+  <div class="other-score" id="otherTeamScore"></div>
 </div>
 
 <div class="flex">
@@ -54,7 +49,7 @@
     <h2>Update</h2>
 
     <label>Team</label>
-    <select id="scoreTeam">
+    <select id="scoreTeam" onchange="updateScoreboard()">
       <option value="1">Team 1</option>
       <option value="2">Team 2</option>
     </select>
@@ -102,6 +97,12 @@
       <button style="flex:1" class="reset-btn" onclick="resetMatch()">Reset</button>
     </div>
   </div>
+
+  <!-- Overs summary stays at bottom -->
+  <div class="over-block">
+    <h2>Overs Summary</h2>
+    <div id="oversDisplay"></div>
+  </div>
 </div>
 </div>
 
@@ -110,11 +111,9 @@ let teams = {
   1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
   2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
 };
-let currentTeam = "1"; // highlight this team
 
 function addBallDirect(runs) {
   const teamId = document.getElementById("scoreTeam").value;
-  currentTeam = teamId;
   let display = String(runs);
   teams[teamId].runs += runs;
 
@@ -130,7 +129,6 @@ function addBallDirect(runs) {
 
 function addSpecial(type, extraRuns = 0) {
   const teamId = document.getElementById("scoreTeam").value;
-  currentTeam = teamId;
   let runs = 0, isLegal = true, display = type, chipClass = '';
 
   if (type === "W") {
@@ -162,8 +160,14 @@ function addSpecial(type, extraRuns = 0) {
   updateScoreboard();
 }
 
-function handleWide(val){ if(val) { addSpecial(val.includes("+")?"wide+"+val.split("+")[1]:"wide"); document.querySelector('select[onchange="handleWide(this.value)"]').value=""; } }
-function handleNoBall(val){ if(val) { addSpecial(val.includes("+")?"noball+"+val.split("+")[1]:"noball"); document.querySelector('select[onchange="handleNoBall(this.value)"]').value=""; } }
+function handleWide(val){ 
+  if(val) { addSpecial(val.includes("+")?val:"wide"); 
+  document.querySelector('select[onchange="handleWide(this.value)"]').value=""; } 
+}
+function handleNoBall(val){ 
+  if(val) { addSpecial(val.includes("+")?val:"noball"); 
+  document.querySelector('select[onchange="handleNoBall(this.value)"]').value=""; } 
+}
 
 function undoBall() {
   const teamId = document.getElementById("scoreTeam").value;
@@ -191,7 +195,6 @@ function resetMatch() {
     1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
     2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
   };
-  currentTeam = "1";
   updateScoreboard();
 }
 
@@ -216,32 +219,28 @@ function groupByOver(balls) {
   return overs;
 }
 
-function renderTeamBlock(teamId) {
+function renderOvers(teamId) {
   const t = teams[teamId];
   const oversGrouped = groupByOver(t.balls);
 
-  let html = `
-    <div class="team ${teamId===currentTeam ? 'current':'other'}">
-      <div class="score"><strong>Team ${teamId}:</strong> ${t.runs}/${t.wickets} (${t.overs}.${t.ballCount} ov)</div>
-      <div class="over-block">
-        ${oversGrouped.map((overBalls, idx) => {
-          const overNum = idx + 1;
-          const chips = overBalls.map(b => `<span class="chip ${b.type}">${b.ball}</span>`).join(' ');
-          return `<div class="over-row"><span class="over-label">Over ${overNum}:</span> ${chips}</div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  return html;
+  return oversGrouped.map((overBalls, idx) => {
+    const overNum = idx + 1;
+    const chips = overBalls.map(b => `<span class="chip ${b.type}">${b.ball}</span>`).join(' ');
+    return `<div class="over-row"><span class="over-label">Over ${overNum}:</span> ${chips}</div>`;
+  }).join('');
 }
 
 function updateScoreboard() {
-  const display = `
-    <div class="teams">
-      ${renderTeamBlock(1)}
-      ${renderTeamBlock(2)}
-    </div>
-  `;
-  document.getElementById("scoreboardDisplay").innerHTML = display;
+  const teamId = document.getElementById("scoreTeam").value;
+  const otherTeamId = teamId === "1" ? "2" : "1";
+
+  const t = teams[teamId];
+  const o = teams[otherTeamId];
+
+  document.getElementById("currentTeamScore").innerHTML = `Team ${teamId}: ${t.runs}/${t.wickets} (${t.overs}.${t.ballCount} ov)`;
+  document.getElementById("otherTeamScore").innerHTML = `Team ${otherTeamId}: ${o.runs}/${o.wickets} (${o.overs}.${o.ballCount} ov)`;
+
+  document.getElementById("oversDisplay").innerHTML = renderOvers(teamId);
 }
 
 window.addEventListener("beforeunload", function (e) {
