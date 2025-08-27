@@ -8,13 +8,14 @@
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
   body { background: #f7f7f7; color: #333; padding: 10px; }
   .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-  h1, h2 { text-align: center; margin-bottom: 10px; font-size: 20px; }
+  h1, h2 { text-align: center; margin-bottom: 10px; font-size: 22px; }
   .flex { display: flex; flex-direction: column; gap: 15px; }
-  .score-controls, .scoreboard { background: #fafafa; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-  label { font-weight: bold; display: block; margin: 6px 0 5px; font-size: 14px; }
-  button { background: #007bff; color: white; cursor: pointer; transition: 0.3s; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; padding: 8px; }
+  .score-controls, .scoreboard { background: #fafafa; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  label { font-weight: bold; display: block; margin: 8px 0 6px; font-size: 16px; }
+  button, select { background: #007bff; color: white; cursor: pointer; transition: 0.3s; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; padding: 10px; }
   button:hover { background: #0056b3; }
-  .score { font-size: 18px; font-weight: bold; margin: 5px 0; }
+  select { width: 100%; color: #333; background: #fff; }
+  .score { font-size: 20px; font-weight: bold; margin: 10px 0; }
   .reset-btn { background: #dc3545; }
   .reset-btn:hover { background: #a71d2a; }
 
@@ -22,13 +23,17 @@
   .over-block { background: #f0f3f9; padding: 8px; border-radius: 8px; margin-top: 6px; }
   .over-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
   .over-label { font-weight: bold; margin-right: 6px; }
-  .chip { margin: 2px; padding: 4px 8px; border-radius: 9999px; display: inline-block; font-size: 12px; line-height: 1; border: 1px solid rgba(0,0,0,0.06); }
+  .chip { margin: 2px; padding: 6px 10px; border-radius: 9999px; display: inline-block; font-size: 14px; line-height: 1; border: 1px solid rgba(0,0,0,0.06); }
   .chip.run { background: #e0e7ff; color: #1e3a8a; }
   .chip.wicket { background: #fee2e2; color: #b91c1c; border-color: rgba(185,28,28,0.2); }
   .chip.wide { background: #ffedd5; color: #c2410c; border-color: rgba(194,65,12,0.2); }
   .chip.noball { background: #f3e8ff; color: #7e22ce; border-color: rgba(126,34,206,0.2); }
 
+  /* Scoreboard layout */
   .teams { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .team { padding: 10px; border-radius: 10px; transition: 0.3s; }
+  .team.current { background: #e6f7ff; transform: scale(1.05); }
+  .team.other { background: #f9f9f9; opacity: 0.85; font-size: 14px; }
   @media (min-width: 800px) {
     .teams { grid-template-columns: 1fr 1fr; }
   }
@@ -37,19 +42,25 @@
 <body>
 <div class="container">
 <h1>Cricket Scoreboard by Ashish</h1>
-<div class="flex">
 
+<!-- Scoreboard moved to top -->
+<div class="scoreboard">
+  <h2>Scoreboard</h2>
+  <div id="scoreboardDisplay"></div>
+</div>
+
+<div class="flex">
   <div class="score-controls">
     <h2>Update</h2>
 
     <label>Team</label>
-    <select id="scoreTeam" style="width:100%; padding:6px; font-size:14px; border-radius:6px;">
+    <select id="scoreTeam">
       <option value="1">Team 1</option>
       <option value="2">Team 2</option>
     </select>
 
     <label>Runs</label>
-    <div class="run-buttons">
+    <div class="run-buttons" style="display:flex; flex-wrap:wrap; gap:6px;">
       <button onclick="addBallDirect(0)">0</button>
       <button onclick="addBallDirect(1)">1</button>
       <button onclick="addBallDirect(2)">2</button>
@@ -60,33 +71,36 @@
     </div>
 
     <label>Special</label>
-    <div class="special-buttons">
-      <button onclick="addSpecial('W')">Wicket</button>
-      <button onclick="addSpecial('wide')">Wide</button>
-      <button onclick="addSpecial('noball')">NoBall</button>
-      <button onclick="addSpecial('wide+',1)">W+1</button>
-      <button onclick="addSpecial('wide+',2)">W+2</button>
-      <button onclick="addSpecial('wide+',3)">W+3</button>
-      <button onclick="addSpecial('wide+',4)">W+4</button>
-      <button onclick="addSpecial('wide+',5)">W+5</button>
-      <button onclick="addSpecial('wide+',6)">W+6</button>
-      <button onclick="addSpecial('noball+',1)">NB+1</button>
-      <button onclick="addSpecial('noball+',2)">NB+2</button>
-      <button onclick="addSpecial('noball+',3)">NB+3</button>
-      <button onclick="addSpecial('noball+',4)">NB+4</button>
-      <button onclick="addSpecial('noball+',5)">NB+5</button>
-      <button onclick="addSpecial('noball+',6)">NB+6</button>
+    <div class="special-menus">
+      <select onchange="handleWide(this.value)">
+        <option value="">Wide / Wide+Runs</option>
+        <option value="wide">Wide</option>
+        <option value="wide+1">Wide+1</option>
+        <option value="wide+2">Wide+2</option>
+        <option value="wide+3">Wide+3</option>
+        <option value="wide+4">Wide+4</option>
+        <option value="wide+5">Wide+5</option>
+        <option value="wide+6">Wide+6</option>
+      </select>
+
+      <select onchange="handleNoBall(this.value)" style="margin-top:8px;">
+        <option value="">NoBall / NB+Runs</option>
+        <option value="noball">NoBall</option>
+        <option value="noball+1">NB+1</option>
+        <option value="noball+2">NB+2</option>
+        <option value="noball+3">NB+3</option>
+        <option value="noball+4">NB+4</option>
+        <option value="noball+5">NB+5</option>
+        <option value="noball+6">NB+6</option>
+      </select>
+
+      <button style="margin-top:8px;" onclick="addSpecial('W')">Wicket</button>
     </div>
 
-    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
       <button style="flex:1" onclick="undoBall()">Undo</button>
       <button style="flex:1" class="reset-btn" onclick="resetMatch()">Reset</button>
     </div>
-  </div>
-
-  <div class="scoreboard">
-    <h2>Score</h2>
-    <div id="scoreboardDisplay"></div>
   </div>
 </div>
 </div>
@@ -96,9 +110,11 @@ let teams = {
   1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
   2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
 };
+let currentTeam = "1"; // highlight this team
 
 function addBallDirect(runs) {
   const teamId = document.getElementById("scoreTeam").value;
+  currentTeam = teamId;
   let display = String(runs);
   teams[teamId].runs += runs;
 
@@ -114,6 +130,7 @@ function addBallDirect(runs) {
 
 function addSpecial(type, extraRuns = 0) {
   const teamId = document.getElementById("scoreTeam").value;
+  currentTeam = teamId;
   let runs = 0, isLegal = true, display = type, chipClass = '';
 
   if (type === "W") {
@@ -122,12 +139,14 @@ function addSpecial(type, extraRuns = 0) {
     chipClass = 'wicket';
   } else if (type === "wide") {
     runs = 1; teams[teamId].runs += runs; isLegal = false; display = "Wide"; chipClass = 'wide';
+  } else if (type.startsWith("wide+")) {
+    const ex = parseInt(type.split("+")[1]); 
+    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `Wide+${ex}`; chipClass = 'wide';
   } else if (type === "noball") {
     runs = 1; teams[teamId].runs += runs; isLegal = false; display = "NoBall"; chipClass = 'noball';
-  } else if (type === "wide+") {
-    runs = 1 + extraRuns; teams[teamId].runs += runs; isLegal = false; display = `Wide+${extraRuns}`; chipClass = 'wide';
-  } else if (type === "noball+") {
-    runs = 1 + extraRuns; teams[teamId].runs += runs; isLegal = false; display = `NB+${extraRuns}`; chipClass = 'noball';
+  } else if (type.startsWith("noball+")) {
+    const ex = parseInt(type.split("+")[1]); 
+    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `NB+${ex}`; chipClass = 'noball';
   }
 
   if (isLegal) {
@@ -142,6 +161,9 @@ function addSpecial(type, extraRuns = 0) {
   teams[teamId].balls.push({ type: finalType, ball: display, runs, legal: isLegal });
   updateScoreboard();
 }
+
+function handleWide(val){ if(val) { addSpecial(val.includes("+")?"wide+"+val.split("+")[1]:"wide"); document.querySelector('select[onchange="handleWide(this.value)"]').value=""; } }
+function handleNoBall(val){ if(val) { addSpecial(val.includes("+")?"noball+"+val.split("+")[1]:"noball"); document.querySelector('select[onchange="handleNoBall(this.value)"]').value=""; } }
 
 function undoBall() {
   const teamId = document.getElementById("scoreTeam").value;
@@ -169,10 +191,11 @@ function resetMatch() {
     1: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 },
     2: { runs: 0, wickets: 0, overs: 0, balls: [], ballCount: 0 }
   };
+  currentTeam = "1";
   updateScoreboard();
 }
 
-// Group events into rows per over (legal deliveries only advance the over)
+// Group events into rows per over
 function groupByOver(balls) {
   const overs = [];
   let current = [];
@@ -198,7 +221,7 @@ function renderTeamBlock(teamId) {
   const oversGrouped = groupByOver(t.balls);
 
   let html = `
-    <div class="team">
+    <div class="team ${teamId===currentTeam ? 'current':'other'}">
       <div class="score"><strong>Team ${teamId}:</strong> ${t.runs}/${t.wickets} (${t.overs}.${t.ballCount} ov)</div>
       <div class="over-block">
         ${oversGrouped.map((overBalls, idx) => {
@@ -221,7 +244,6 @@ function updateScoreboard() {
   document.getElementById("scoreboardDisplay").innerHTML = display;
 }
 
-// Warn before refresh/close
 window.addEventListener("beforeunload", function (e) {
   e.preventDefault();
   e.returnValue = "Are you sure you want to leave? This will reset the scoreboard.";
