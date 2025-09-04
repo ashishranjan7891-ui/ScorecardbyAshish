@@ -133,28 +133,29 @@ function addBallDirect(runs) {
     teams[teamId].ballCount = 0;
   }
 
-  teams[teamId].balls.push({ type: 'run', ball: display, runs, legal: true });
+  teams[teamId].balls.push({ type: 'run', baseType: 'run', ball: display, runs, legal: true });
   updateScoreboard();
 }
 
 function addSpecial(type, extraRuns = 0) {
   const teamId = document.getElementById("scoreTeam").value;
-  let runs = 0, isLegal = true, display = type, chipClass = '';
+  let runs = 0, isLegal = true, display = type, chipClass = '', baseType = '';
 
   if (type === "W") {
     teams[teamId].wickets++;
     display = "W";
     chipClass = 'wicket';
+    baseType = 'wicket';
   } else if (type === "wide") {
-    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "Wd"; chipClass = 'wide';
+    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "Wd"; chipClass = 'wide'; baseType = 'wide';
   } else if (type.startsWith("wide+")) {
     const ex = parseInt(type.split("+")[1]); 
-    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `Wd+${ex}`; chipClass = 'wide';
+    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `Wd+${ex}`; chipClass = 'wide'; baseType = 'wide';
   } else if (type === "noball") {
-    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "NB"; chipClass = 'noball';
+    runs = 1; teams[teamId].runs += runs; isLegal = false; display = "NB"; chipClass = 'noball'; baseType = 'noball';
   } else if (type.startsWith("noball+")) {
     const ex = parseInt(type.split("+")[1]); 
-    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `NB+${ex}`; chipClass = 'noball';
+    runs = 1 + ex; teams[teamId].runs += runs; isLegal = false; display = `NB+${ex}`; chipClass = 'noball'; baseType = 'noball';
   }
 
   if (isLegal) {
@@ -166,7 +167,7 @@ function addSpecial(type, extraRuns = 0) {
   }
 
   const finalType = chipClass || 'run';
-  teams[teamId].balls.push({ type: finalType, ball: display, runs, legal: isLegal });
+  teams[teamId].balls.push({ type: finalType, baseType, ball: display, runs, legal: isLegal });
   updateScoreboard();
 }
 
@@ -188,7 +189,6 @@ function addStumpRunout() {
 
   teams[teamId].wickets++;
   lastBall.ball += "(St/Ro)";
-  lastBall.type = "wicket";
   lastBall.isStumpRunout = true;
 
   updateScoreboard();
@@ -201,7 +201,7 @@ function handleNoBall(val){
   if(val) { addSpecial(val); document.querySelector('select[onchange="handleNoBall(this.value)"]').value=""; } 
 }
 
-// ✅ Smarter Undo
+// ✅ Fixed Smarter Undo
 function undoBall() {
   const teamId = document.getElementById("scoreTeam").value;
   let last = teams[teamId].balls[teams[teamId].balls.length - 1];
@@ -212,15 +212,16 @@ function undoBall() {
     teams[teamId].wickets--;
     last.ball = last.ball.replace("(St/Ro)", "");
     delete last.isStumpRunout;
-    last.type = last.legal ? 'run' : last.type;
     updateScoreboard();
     return;
   }
 
-  // Normal undo (remove ball)
+  // Normal undo (remove ball completely)
   last = teams[teamId].balls.pop();
   teams[teamId].runs -= last.runs;
-  if (last.ball.includes("W")) {
+
+  // ✅ Only decrease wickets if it was a real wicket
+  if (last.baseType === "wicket") {
     teams[teamId].wickets--;
   }
 
@@ -270,7 +271,11 @@ function renderOvers(teamId) {
 
   return oversGrouped.map((overBalls, idx) => {
     const overNum = idx + 1;
-    const chips = overBalls.map(b => `<span class="chip ${b.type}">${b.ball}</span>`).join(' ');
+    const chips = overBalls.map(b => {
+      let chipClass = b.type;
+      if (b.isStumpRunout) chipClass = "wicket"; // show red
+      return `<span class="chip ${chipClass}">${b.ball}</span>`;
+    }).join(' ');
     return `<div class="over-row"><span class="over-label">Over ${overNum}:</span> ${chips}</div>`;
   }).join('');
 }
@@ -290,7 +295,11 @@ function updateScoreboard() {
   // Current Over chips
   const overBalls = groupByOver(t.balls).pop() || [];
   if (overBalls.length) {
-    const chips = overBalls.map(b => `<span class="chip ${b.type}">${b.ball}</span>`).join(' ');
+    const chips = overBalls.map(b => {
+      let chipClass = b.type;
+      if (b.isStumpRunout) chipClass = "wicket";
+      return `<span class="chip ${chipClass}">${b.ball}</span>`;
+    }).join(' ');
     document.getElementById("currentOverProgress").innerHTML = `Current Over: ${chips}`;
   } else {
     document.getElementById("currentOverProgress").innerHTML = "Current Over: -";
