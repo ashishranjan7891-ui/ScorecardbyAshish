@@ -170,20 +170,26 @@ function addSpecial(type, extraRuns = 0) {
   updateScoreboard();
 }
 
-// ✅ New function for stump/runout
+// ✅ Stump/Runout only if last ball exists and not already tagged
 function addStumpRunout() {
   const teamId = document.getElementById("scoreTeam").value;
-  teams[teamId].wickets++;
 
-  // Attach to last ball
-  if (teams[teamId].balls.length > 0) {
-    let lastBall = teams[teamId].balls[teams[teamId].balls.length - 1];
-    lastBall.ball += "(St/Ro)";
-    lastBall.type = "wicket"; // highlight in red
-  } else {
-    // If no ball exists, just record as wicket (non-legal)
-    teams[teamId].balls.push({ type: 'wicket', ball: "W(St/Ro)", runs: 0, legal: false });
+  if (teams[teamId].balls.length === 0) {
+    alert("You must record a ball first before marking Stump/Runout!");
+    return;
   }
+
+  let lastBall = teams[teamId].balls[teams[teamId].balls.length - 1];
+
+  if (lastBall.isStumpRunout) {
+    alert("Stump/Runout already marked for this ball!");
+    return;
+  }
+
+  teams[teamId].wickets++;
+  lastBall.ball += "(St/Ro)";
+  lastBall.type = "wicket";
+  lastBall.isStumpRunout = true;
 
   updateScoreboard();
 }
@@ -195,11 +201,24 @@ function handleNoBall(val){
   if(val) { addSpecial(val); document.querySelector('select[onchange="handleNoBall(this.value)"]').value=""; } 
 }
 
+// ✅ Smarter Undo
 function undoBall() {
   const teamId = document.getElementById("scoreTeam").value;
-  const last = teams[teamId].balls.pop();
+  let last = teams[teamId].balls[teams[teamId].balls.length - 1];
   if (!last) return;
 
+  // Undo stump/runout tag only
+  if (last.isStumpRunout) {
+    teams[teamId].wickets--;
+    last.ball = last.ball.replace("(St/Ro)", "");
+    delete last.isStumpRunout;
+    last.type = last.legal ? 'run' : last.type;
+    updateScoreboard();
+    return;
+  }
+
+  // Normal undo (remove ball)
+  last = teams[teamId].balls.pop();
   teams[teamId].runs -= last.runs;
   if (last.ball.includes("W")) {
     teams[teamId].wickets--;
